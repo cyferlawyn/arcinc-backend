@@ -1,0 +1,12 @@
+server:
+  address: 0.0.0.0
+  port: 8081
+  tomcat:
+    accesslog:
+      enabled: true
+      pattern: '{"date": "%t", "host": "%h", "req": "%r%q", "srv-dur": %F, "req-dur": %D, "status": %s, "size": %b}'
+      directory: /arcinc_log/backend_access.log
+
+spring:
+  mvc:
+    dispatch-options-request: true

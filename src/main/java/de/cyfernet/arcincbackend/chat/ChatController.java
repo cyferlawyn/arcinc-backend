@@ -5,72 +5,94 @@ import de.cyfernet.arcincbackend.user.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.event.EventListener;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import static net.logstash.logback.marker.Markers.append;
+
 @RestController
+@RequestMapping("/chat")
+@CrossOrigin
 public class ChatController {
+    private final Logger logger = LoggerFactory.getLogger(ChatController.class);
+
+    private final CopyOnWriteArrayList<SseEmitter> emitters = new CopyOnWriteArrayList<>();
+
+    @Autowired
+    ApplicationEventPublisher applicationEventPublisher;
+
     @Autowired
     UserRepository userRepository;
 
     @Autowired
     ChatEntryRepository chatEntryRepository;
 
-    private final Logger logger = LoggerFactory.getLogger(ChatController.class);
+    @EventListener
+    public void onChatSend(ChatEntry chatEntry) {
+        List<SseEmitter> deadEmitters = new ArrayList<>();
 
-    @RequestMapping(value="/chat/send", method = RequestMethod.POST)
-    public ResponseEntity send(@RequestParam(value="authToken") String authToken, @RequestParam(value="text") String text) {
-        User user = userRepository.findByAuthToken(authToken);
+        ChatEntryDto chatEntryDto = new ChatEntryDto();
+        chatEntryDto.time = chatEntry.time;
+        chatEntryDto.name = chatEntry.userName;
+        chatEntryDto.text = chatEntry.text;
 
-        if (user != null) {
-            OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        this.emitters.forEach(emitter -> {
+            try {
+                emitter.send(chatEntryDto);
+            } catch (Exception e) {
+                deadEmitters.add(emitter);
+            }
+        });
 
-            ChatEntry chatEntry = new ChatEntry();
-            chatEntry.userId = user.id;
-            chatEntry.userName = user.name;
-            chatEntry.timestamp = now.toInstant().toEpochMilli();
-            chatEntry.time = String.format("%02d" , now.getHour()) + ":" + String.format("%02d" , now.getMinute()) + ":" + String.format("%02d" , now.getSecond());
-            chatEntry.text = text;
-            chatEntryRepository.save(chatEntry);
-
-            logger.debug(append("user", user).and(append("chatEntry", chatEntry)), "Sent to chat");
-
-            return new ResponseEntity(HttpStatus.CREATED);
-        } else {
-            logger.error(append("authToken", authToken).and(append("text", text)), "Failed to send to chat");
-            return new ResponseEntity(HttpStatus.FORBIDDEN);
-        }
+        this.emitters.removeAll(deadEmitters);
     }
 
-    @RequestMapping(value="/chat/receive", method = RequestMethod.GET)
-    public ResponseEntity<ChatEntryDto[]> receive(@RequestParam(value="authToken") String authToken) {
-        User user = userRepository.findByAuthToken(authToken);
+    @RequestMapping(value = "send", method = RequestMethod.POST)
+    public ResponseEntity send(@RequestBody SendReqDto sendReqDto) {
+        if (sendReqDto != null && sendReqDto.authToken != null && sendReqDto.text != null) {
+            User user = userRepository.findByAuthToken(sendReqDto.authToken);
 
-        if (user != null) {
-            List<ChatEntry> chatEntries = chatEntryRepository.findTop50ByOrderByTimestampDesc();
-            ChatEntryDto[] chatEntryDtos = new ChatEntryDto[chatEntries.size()];
+            if (user != null && !user.muted && !user.banned) {
+                OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
 
-            for (int i = 0; i < chatEntries.size(); i++) {
-                ChatEntryDto chatEntryDto = new ChatEntryDto();
-                chatEntryDto.time = chatEntries.get(i).time;
-                chatEntryDto.name = chatEntries.get(i).userName;
-                chatEntryDto.text = chatEntries.get(i).text;
-                chatEntryDtos[i] = chatEntryDto;
+                ChatEntry chatEntry = new ChatEntry();
+                chatEntry.userId = user.id;
+                chatEntry.userName = user.name;
+                chatEntry.timestamp = now.toInstant().toEpochMilli();
+                chatEntry.time = String.format("%02d", now.getHour()) + ":" + String.format("%02d", now.getMinute()) + ":" + String.format("%02d", now.getSecond());
+                chatEntry.text = sendReqDto.text;
+                chatEntryRepository.save(chatEntry);
+
+                this.applicationEventPublisher.publishEvent(chatEntry);
+
+                logger.debug(append("user", user).and(append("chatEntry", chatEntry)), "Sent to chat");
+
+                return new ResponseEntity(HttpStatus.CREATED);
             }
-
-            return new ResponseEntity<>(chatEntryDtos, HttpStatus.OK);
-        } else {
-            logger.error(append("authToken", authToken), "Failed to receive chat");
-            return new ResponseEntity(HttpStatus.FORBIDDEN);
         }
+
+        logger.error(append("sendReqDto", sendReqDto), "Failed to send to chat");
+        return new ResponseEntity(HttpStatus.FORBIDDEN);
+    }
+
+    @RequestMapping(value = "receive", method = RequestMethod.GET)
+    public ResponseEntity<SseEmitter> receive() {
+        SseEmitter emitter = new SseEmitter(900_000L);
+        this.emitters.add(emitter);
+
+        emitter.onCompletion(() -> this.emitters.remove(emitter));
+        emitter.onTimeout(() -> this.emitters.remove(emitter));
+
+        return new ResponseEntity<>(emitter, HttpStatus.OK);
     }
 }

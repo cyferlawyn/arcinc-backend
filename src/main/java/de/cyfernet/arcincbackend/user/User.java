@@ -1,5 +1,6 @@
 package de.cyfernet.arcincbackend.user;
 
+import org.bson.Document;
 import org.springframework.data.annotation.Id;
 
 public class User {
@@ -16,5 +17,11 @@ public class User {
 
     public Long lastSeen;
 
-    public String savegame;
+    public boolean muted = false;
+
+    public boolean flagged = false;
+
+    public boolean banned = false;
+
+    public Document savegame;
 }
