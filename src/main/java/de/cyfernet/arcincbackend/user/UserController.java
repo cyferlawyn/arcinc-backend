@@ -1,5 +1,6 @@
 package de.cyfernet.arcincbackend.user;
 
+import de.cyfernet.arcincbackend.Version;
 import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -30,7 +32,7 @@ public class UserController {
 
     private final Logger logger = LoggerFactory.getLogger(UserController.class);
 
-    @RequestMapping(value="create", method = RequestMethod.POST)
+    @RequestMapping(value = "create", method = RequestMethod.POST)
     public ResponseEntity<CreateResDto> create(@RequestBody CreateReqDto createReqDto) {
         if (createReqDto != null && createReqDto.name != null && createReqDto.passwordHash != null) {
             User user = new User();
@@ -56,7 +58,7 @@ public class UserController {
         return new ResponseEntity<>(HttpStatus.CONFLICT);
     }
 
-    @RequestMapping(value="login", method = RequestMethod.POST)
+    @RequestMapping(value = "login", method = RequestMethod.POST)
     public ResponseEntity<LoginResDto> login(@RequestBody LoginReqDto loginReqDto) {
         if (loginReqDto != null && loginReqDto.name != null && loginReqDto.passwordHash != null) {
             User user = userRepository.findByName(loginReqDto.name);
@@ -77,14 +79,33 @@ public class UserController {
         return new ResponseEntity<>(HttpStatus.FORBIDDEN);
     }
 
-    @RequestMapping(value="save", method = RequestMethod.POST)
+    @RequestMapping(value = "save", method = RequestMethod.POST)
     public ResponseEntity save(@RequestBody SaveReqDto saveReqDto) {
         if (saveReqDto != null && saveReqDto.authToken != null && saveReqDto.savegame != null) {
             User user = userRepository.findByAuthToken(saveReqDto.authToken);
 
             if (user != null) {
+                Document newSavegame = Document.parse(saveReqDto.savegame);
+
+                if (user.savegame != null && user.savegame.getString("version") != null && newSavegame.getString("version") != null) {
+                    String oldVersion = user.savegame.getString("version");
+                    String newVersion = newSavegame.getString("version");
+
+                    if (oldVersion != null && newVersion != null && oldVersion.equals(Version.CURRENT) && newVersion.equals(Version.CURRENT)) {
+                        Integer oldHighestWave = user.savegame.getInteger("highestWave");
+                        Integer newHighestWave = newSavegame.getInteger("highestWave");
+
+                        if (oldHighestWave != null && newHighestWave != null && newHighestWave < oldHighestWave) {
+                            // If all conditions above apply, the savegame is outdated and we will not save it.
+                            user.lastSeen = OffsetDateTime.now(ZoneOffset.UTC).toInstant().toEpochMilli();
+                            userRepository.save(user);
+                            logger.warn(append("user", user).and(append("saveReqDto", saveReqDto)), "Skipped saving user");
+                        }
+                    }
+                }
+
+                user.savegame = newSavegame;
                 user.lastSeen = OffsetDateTime.now(ZoneOffset.UTC).toInstant().toEpochMilli();
-                user.savegame = Document.parse(saveReqDto.savegame);
                 userRepository.save(user);
                 logger.debug(append("user", user), "Saved user");
 
@@ -96,23 +117,48 @@ public class UserController {
         return new ResponseEntity(HttpStatus.FORBIDDEN);
     }
 
-    @RequestMapping(value="leaderboard", method = RequestMethod.GET)
-    public ResponseEntity<LeaderboardResDto[]>leaderboard() {
-        BasicQuery query = new BasicQuery("{}");
+    @RequestMapping(value = "load", method = RequestMethod.POST)
+    public ResponseEntity<LoadResDto> load(@RequestBody LoadReqDto loadReqDto) {
+        if (loadReqDto != null && loadReqDto.authToken != null) {
+            User user = userRepository.findByAuthToken(loadReqDto.authToken);
+            LoadResDto loadResDto = new LoadResDto();
+            loadResDto.savegame = user.savegame;
+
+            logger.debug(append("user", user), "Loaded user");
+
+            return new ResponseEntity<>(loadResDto, HttpStatus.OK);
+        }
+
+        return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+    }
+
+
+    @RequestMapping(value = "leaderboard", method = RequestMethod.GET)
+    public ResponseEntity<LeaderboardResDto[]> leaderboard() {
+        BasicQuery query = new BasicQuery("{'flagged': false, 'savegame.version': '" + Version.CURRENT + "'}");
         query.with(new Sort(Sort.Direction.DESC, "savegame.highestWave"));
         query.limit(50);
         List<User> users = mongoTemplate.find(query, User.class);
 
-        LeaderboardResDto[] leaderboardResDtos = new LeaderboardResDto[users.size()];
+        List<LeaderboardResDto> leaderboardResDtos = new ArrayList<>();
 
         for (int i = 0; i < users.size(); i++) {
-            LeaderboardResDto leaderboardResDto = new LeaderboardResDto();
-            leaderboardResDto.rank = i + 1;
-            leaderboardResDto.name = users.get(i).name;
-            leaderboardResDto.highestWave = users.get(i).savegame.getInteger("highestWave");
-            leaderboardResDtos[i] = leaderboardResDto;
+            try {
+                LeaderboardResDto leaderboardResDto = new LeaderboardResDto();
+                leaderboardResDto.rank = i + 1;
+                leaderboardResDto.name = users.get(i).name;
+                if (users.get(i).savegame != null) {
+                    leaderboardResDto.highestWave = users.get(i).savegame.getInteger("highestWave");
+                } else {
+                    leaderboardResDto.highestWave = 0;
+                }
+                leaderboardResDtos.add(leaderboardResDto);
+            } catch (Throwable t) {
+                logger.warn(append("user", users.get(i)), "Invalid data structure found");
+            }
         }
-
-        return new ResponseEntity<>(leaderboardResDtos, HttpStatus.OK);
+        LeaderboardResDto[] leaderboardResDtoArray = new LeaderboardResDto[leaderboardResDtos.size()];
+        leaderboardResDtos.toArray(leaderboardResDtoArray);
+        return new ResponseEntity<>(leaderboardResDtoArray, HttpStatus.OK);
     }
 }
