@@ -1,9 +1,11 @@
 package de.cyfernet.arcincbackend.user;
 
 public class LeaderboardResDto {
-    public Integer rank;
+    public Long rank;
 
     public String name;
 
-    public Integer highestWave;
+    public Long highestWave;
+
+    public Long activeAntimatter;
 }

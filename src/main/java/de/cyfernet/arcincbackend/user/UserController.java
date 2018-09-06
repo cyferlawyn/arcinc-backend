@@ -139,7 +139,7 @@ public class UserController {
     public ResponseEntity<LeaderboardResDto[]> leaderboard() {
         BasicQuery query = new BasicQuery("{'flagged': false, 'savegame.version': '" + Version.CURRENT + "'}");
         query.with(new Sort(Sort.Direction.DESC, "savegame.highestWave"));
-        query.limit(50);
+        query.limit(100);
         List<User> users = mongoTemplate.find(query, User.class);
 
         List<LeaderboardResDto> leaderboardResDtos = new ArrayList<>();
@@ -147,12 +147,14 @@ public class UserController {
         for (int i = 0; i < users.size(); i++) {
             try {
                 LeaderboardResDto leaderboardResDto = new LeaderboardResDto();
-                leaderboardResDto.rank = i + 1;
+                leaderboardResDto.rank = i + 1l;
                 leaderboardResDto.name = users.get(i).name;
                 if (users.get(i).savegame != null) {
-                    leaderboardResDto.highestWave = users.get(i).savegame.getInteger("highestWave");
+                    leaderboardResDto.highestWave = users.get(i).savegame.getInteger("highestWave").longValue();
+                    leaderboardResDto.activeAntimatter = users.get(i).savegame.getInteger("activeAntimatter").longValue();
                 } else {
-                    leaderboardResDto.highestWave = 0;
+                    leaderboardResDto.highestWave = 0l;
+                    leaderboardResDto.activeAntimatter = 0l;
                 }
                 leaderboardResDtos.add(leaderboardResDto);
             } catch (Throwable t) {
