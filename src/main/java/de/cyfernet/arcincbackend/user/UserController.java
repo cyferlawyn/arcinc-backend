@@ -138,7 +138,7 @@ public class UserController {
     @RequestMapping(value = "leaderboard", method = RequestMethod.GET)
     public ResponseEntity<LeaderboardResDto[]> leaderboard() {
         BasicQuery query = new BasicQuery("{'flagged': false, 'savegame.version': '" + Version.CURRENT + "'}");
-        query.with(new Sort(Sort.Direction.DESC, "savegame.highestWave"));
+        query.with(new Sort(Sort.Direction.DESC, "savegame.highestWaveEver"));
         query.limit(100);
         List<User> users = mongoTemplate.find(query, User.class);
 
@@ -150,6 +150,7 @@ public class UserController {
                 leaderboardResDto.rank = i + 1l;
                 leaderboardResDto.name = users.get(i).name;
                 if (users.get(i).savegame != null) {
+                    leaderboardResDto.highestWaveEver = users.get(i).savegame.getInteger("highestWaveEver").longValue();
                     leaderboardResDto.highestWave = users.get(i).savegame.getInteger("highestWave").longValue();
                     leaderboardResDto.activeAntimatter = users.get(i).savegame.getInteger("activeAntimatter").longValue();
                 } else {

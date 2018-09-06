@@ -5,6 +5,8 @@ public class LeaderboardResDto {
 
     public String name;
 
+    public Long highestWaveEver;
+
     public Long highestWave;
 
     public Long activeAntimatter;
