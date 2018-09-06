@@ -150,9 +150,19 @@ public class UserController {
                 leaderboardResDto.rank = i + 1l;
                 leaderboardResDto.name = users.get(i).name;
                 if (users.get(i).savegame != null) {
-                    leaderboardResDto.highestWaveEver = users.get(i).savegame.getInteger("highestWaveEver").longValue();
                     leaderboardResDto.highestWave = users.get(i).savegame.getInteger("highestWave").longValue();
-                    leaderboardResDto.activeAntimatter = users.get(i).savegame.getInteger("activeAntimatter").longValue();
+
+                    if (users.get(i).savegame.containsKey("highestWaveEver")) {
+                        leaderboardResDto.highestWaveEver = users.get(i).savegame.getInteger("highestWaveEver").longValue();
+                    } else {
+                        leaderboardResDto.highestWaveEver = leaderboardResDto.highestWave;
+                    }
+
+                    if (users.get(i).savegame.containsKey("activeAntimatter")) {
+                        leaderboardResDto.activeAntimatter = users.get(i).savegame.getInteger("activeAntimatter").longValue();
+                    } else {
+                        leaderboardResDto.activeAntimatter = 0l;
+                    }
                 } else {
                     leaderboardResDto.highestWave = 0l;
                     leaderboardResDto.activeAntimatter = 0l;
