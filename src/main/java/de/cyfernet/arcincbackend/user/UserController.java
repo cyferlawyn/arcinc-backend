@@ -180,6 +180,10 @@ public class UserController {
             }
         });
 
+        for (int i = 0; i < leaderboardResDtos.size(); i++) {
+            leaderboardResDtos.get(i).rank = i + 1l;
+        }
+
         LeaderboardResDto[] leaderboardResDtoArray = new LeaderboardResDto[leaderboardResDtos.size()];
         leaderboardResDtos.toArray(leaderboardResDtoArray);
         return new ResponseEntity<>(leaderboardResDtoArray, HttpStatus.OK);
