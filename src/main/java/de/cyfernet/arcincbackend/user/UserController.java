@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -172,6 +173,13 @@ public class UserController {
                 logger.warn(append("user", users.get(i)), "Invalid data structure found");
             }
         }
+        leaderboardResDtos.sort(new Comparator<LeaderboardResDto>() {
+            @Override
+            public int compare(LeaderboardResDto o1, LeaderboardResDto o2) {
+                return o1.highestWaveEver > o2.highestWaveEver ? -1 :(o1.highestWaveEver < o2.highestWaveEver ? 1 : 0);
+            }
+        });
+
         LeaderboardResDto[] leaderboardResDtoArray = new LeaderboardResDto[leaderboardResDtos.size()];
         leaderboardResDtos.toArray(leaderboardResDtoArray);
         return new ResponseEntity<>(leaderboardResDtoArray, HttpStatus.OK);
