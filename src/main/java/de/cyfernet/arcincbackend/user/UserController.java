@@ -87,6 +87,7 @@ public class UserController {
             if (user != null) {
                 Document newSavegame = Document.parse(saveReqDto.savegame);
 
+                /*
                 if (user.savegame != null && user.savegame.getString("version") != null && newSavegame.getString("version") != null) {
                     String oldVersion = user.savegame.getString("version");
                     String newVersion = newSavegame.getString("version");
@@ -103,6 +104,7 @@ public class UserController {
                         }
                     }
                 }
+                */
 
                 user.savegame = newSavegame;
                 user.lastSeen = OffsetDateTime.now(ZoneOffset.UTC).toInstant().toEpochMilli();

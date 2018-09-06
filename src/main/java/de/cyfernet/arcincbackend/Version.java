@@ -1,5 +1,5 @@
 package de.cyfernet.arcincbackend;
 
 public interface Version {
-    String CURRENT = "v0.15";
+    String CURRENT = "v0.17";
 }
