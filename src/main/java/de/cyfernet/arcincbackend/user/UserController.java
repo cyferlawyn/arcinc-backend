@@ -116,7 +116,7 @@ public class UserController {
             }
         }
 
-        logger.error(append("saveReqDto", saveReqDto), "Failed to save user");
+        logger.error(append("saveReqDto", saveReqDto), "Failed to save user ");
         return new ResponseEntity(HttpStatus.FORBIDDEN);
     }
 
@@ -160,13 +160,18 @@ public class UserController {
                     }
 
                     if (users.get(i).savegame.containsKey("activeAntimatter")) {
-                        leaderboardResDto.activeAntimatter = users.get(i).savegame.getDouble("activeAntimatter");
+                        try {
+                            leaderboardResDto.activeAntimatter = users.get(i).savegame.getDouble("activeAntimatter").longValue();
+                        } catch(ClassCastException c) {
+                            leaderboardResDto.activeAntimatter = users.get(i).savegame.getInteger("activeAntimatter").longValue();
+                        }
+
                     } else {
-                        leaderboardResDto.activeAntimatter = 0.;
+                        leaderboardResDto.activeAntimatter = 0l;
                     }
                 } else {
                     leaderboardResDto.highestWave = 0l;
-                    leaderboardResDto.activeAntimatter = 0.;
+                    leaderboardResDto.activeAntimatter = 0l;
                 }
                 leaderboardResDtos.add(leaderboardResDto);
             } catch (Throwable t) {
