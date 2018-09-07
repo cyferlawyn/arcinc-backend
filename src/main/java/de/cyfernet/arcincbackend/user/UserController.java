@@ -153,10 +153,12 @@ public class UserController {
                 if (users.get(i).savegame != null) {
                     leaderboardResDto.highestWave = users.get(i).savegame.getInteger("highestWave").longValue();
 
+                    leaderboardResDto.highestWaveEver = leaderboardResDto.highestWave;
                     if (users.get(i).savegame.containsKey("highestWaveEver")) {
-                        leaderboardResDto.highestWaveEver = users.get(i).savegame.getInteger("highestWaveEver").longValue();
-                    } else {
-                        leaderboardResDto.highestWaveEver = leaderboardResDto.highestWave;
+                        Integer highestWaveEver = users.get(i).savegame.getInteger("highestWaveEver");
+                        if (highestWaveEver != null) {
+                            leaderboardResDto.highestWaveEver = highestWaveEver.longValue();
+                        }
                     }
 
                     if (users.get(i).savegame.containsKey("activeAntimatter")) {
@@ -175,7 +177,7 @@ public class UserController {
                 }
                 leaderboardResDtos.add(leaderboardResDto);
             } catch (Throwable t) {
-                logger.warn(append("user", users.get(i)), "Invalid data structure found", t);
+                logger.warn(append("user", users.get(i)), "Invalid data structure found for user " + users.get(i).name, t);
             }
         }
         leaderboardResDtos.sort(new Comparator<LeaderboardResDto>() {
