@@ -170,7 +170,7 @@ public class UserController {
                 }
                 leaderboardResDtos.add(leaderboardResDto);
             } catch (Throwable t) {
-                logger.warn(append("user", users.get(i)), "Invalid data structure found");
+                logger.warn(append("user", users.get(i)), "Invalid data structure found", t);
             }
         }
         leaderboardResDtos.sort(new Comparator<LeaderboardResDto>() {
