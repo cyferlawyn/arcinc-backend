@@ -160,13 +160,13 @@ public class UserController {
                     }
 
                     if (users.get(i).savegame.containsKey("activeAntimatter")) {
-                        leaderboardResDto.activeAntimatter = users.get(i).savegame.getInteger("activeAntimatter").longValue();
+                        leaderboardResDto.activeAntimatter = users.get(i).savegame.getDouble("activeAntimatter");
                     } else {
-                        leaderboardResDto.activeAntimatter = 0l;
+                        leaderboardResDto.activeAntimatter = 0.;
                     }
                 } else {
                     leaderboardResDto.highestWave = 0l;
-                    leaderboardResDto.activeAntimatter = 0l;
+                    leaderboardResDto.activeAntimatter = 0.;
                 }
                 leaderboardResDtos.add(leaderboardResDto);
             } catch (Throwable t) {
