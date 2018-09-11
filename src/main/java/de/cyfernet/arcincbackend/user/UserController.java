@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -163,17 +164,24 @@ public class UserController {
 
                     if (users.get(i).savegame.containsKey("activeAntimatter")) {
                         try {
-                            leaderboardResDto.activeAntimatter = users.get(i).savegame.getDouble("activeAntimatter").longValue();
+                            BigDecimal activeAntimatter = new BigDecimal(users.get(i).savegame.getString("activeAntimatter"));
+                            leaderboardResDto.activeAntimatter = activeAntimatter.toPlainString();
                         } catch(ClassCastException c) {
-                            leaderboardResDto.activeAntimatter = users.get(i).savegame.getInteger("activeAntimatter").longValue();
+                            try {
+                                BigDecimal activeAntimatter = new BigDecimal(users.get(i).savegame.getInteger("activeAntimatter"));
+                                leaderboardResDto.activeAntimatter = activeAntimatter.toPlainString();
+                            } catch (ClassCastException c2) {
+                                BigDecimal activeAntimatter = new BigDecimal(users.get(i).savegame.getDouble("activeAntimatter"));
+                                leaderboardResDto.activeAntimatter = activeAntimatter.toPlainString();
+                            }
                         }
 
                     } else {
-                        leaderboardResDto.activeAntimatter = 0l;
+                        leaderboardResDto.activeAntimatter = "0";
                     }
                 } else {
                     leaderboardResDto.highestWave = 0l;
-                    leaderboardResDto.activeAntimatter = 0l;
+                    leaderboardResDto.activeAntimatter = "0";
                 }
                 leaderboardResDtos.add(leaderboardResDto);
             } catch (Throwable t) {

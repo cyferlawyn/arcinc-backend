@@ -9,5 +9,5 @@ public class LeaderboardResDto {
 
     public Long highestWave;
 
-    public Long activeAntimatter;
+    public String activeAntimatter;
 }
